@@ -1,0 +1,9 @@
+name = "GeneralLedgers"
+uuid = "adab416e-2b84-11e9-2fd1-b5546e90182a"
+authors = ["Eric Forgy <Eric.Forgy@coherentasia.com>"]
+version = "0.1.0"
+
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Countries = "d5396ca0-2cf9-11e9-2c96-2532c40e11ac"
+ISOCurrencies = "5683cba2-2ced-11e9-0d3f-33b1fe4e9d91"
