@@ -23,8 +23,8 @@ Base.show(io::IO,a::CreditAccount{C}) where C = print(io,"CreditAccount{",C(),"}
 
 AbstractTrees.children(e::Entry) = [e.debit,e.credit,e.amount]
 AbstractTrees.printnode(io::IO,c::Entry) = print(io,"Entry")
-AbstractTrees.printnode(io::IO,c::Position{C}) where C = print(io,c)
+AbstractTrees.printnode(io::IO,c::Position{Cash{C}}) where C = print(io,c.amount," ",C())
 
-Base.show(io::IO,c::Position{C}) where C<:Currency = print(io,c.amount," ",C())
+Base.show(io::IO,c::Position{Cash{C}}) where C = print(io,c.amount," ",C())
 Base.show(io::IO,e::Entry) = print_tree(io,e)
 
