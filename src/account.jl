@@ -75,3 +75,4 @@ CreditGroup(p,n,c,::C=FI.USD) where C = Account{C}(p,n,c,false,Aggregate,Vector{
 GeneralLedger(n,c,::C=FI.USD) where C = Account{C}(nothing,n,c,true,Aggregate,Vector{Account}(),Dict{String,Account}())
 
 currency(a::Account{C}) where C = C()
+iscontra(a::Account) = !isnothing(a.parent) && !isequal(a.parent,get_ledger(a)) && !isequal(a.parent.isdebit,a.isdebit)
