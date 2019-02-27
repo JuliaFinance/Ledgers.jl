@@ -19,9 +19,7 @@ mutable struct Account{C<:Currency}
 
     function Account{C}(parent,name,code,isdebit,balance,subaccounts,chart) where C<:Currency 
         a = new(parent,name,code,isdebit,balance,subaccounts,chart)
-        if !isnothing(parent)
-            push!(parent.subaccounts,a)
-        end
+        isnothing(parent) || push!(parent.subaccounts,a)
         add(a)
         return a
     end
