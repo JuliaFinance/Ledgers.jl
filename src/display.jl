@@ -1,13 +1,14 @@
 AbstractTrees.printnode(x) = AbstractTrees.printnode(stdout,x)
 
-AbstractTrees.children(a::Account) = _children(a,accounttype(a))
-_children(a::Account,::GeneralLedger) = isnothing(a.subaccounts) ? Vector{Account}() : [a.subaccounts;[a.chart]]
-_children(a::Account,::Any) = isnothing(a.subaccounts) ? Vector{Account}() : a.subaccounts
+AbstractTrees.children(a::Account) = isnothing(a.subaccounts) ? Vector{Account}() : a.subaccounts
+# AbstractTrees.children(a::Account) = _children(a,accounttype(a))
+# _children(a::Account,::GeneralLedger) = isnothing(a.subaccounts) ? Vector{Account}() : [a.subaccounts;[a.chart]]
+# _children(a::Account,::Any) = isnothing(a.subaccounts) ? Vector{Account}() : a.subaccounts
 
 AbstractTrees.printnode(io::IO,a::Account) = _printnode(io,a,accounttype(a))
 _printnode(io::IO,a::Account,::GeneralLedger{C}) where C = print(io,a.name)
-_printnode(io::IO,a::Account,::Union{DebitGroup,CreditGroup}) = print(io,a.name)
-_printnode(io::IO,a::Account,::Union{DebitAccount,CreditAccount}) = print(io,"$(a.name): ",balance(a))
+_printnode(io::IO,a::Account,::Union{DebitGroup,CreditGroup}) = print(io,"$(a.code) $(a.name)")
+_printnode(io::IO,a::Account,::Union{DebitAccount,CreditAccount}) = print(io,"$(a.code) $(a.name): ",balance(a))
 
 AbstractTrees.printnode(io::IO,c::Dict{String,Account}) = print(io,"Chart of Accounts:")
 

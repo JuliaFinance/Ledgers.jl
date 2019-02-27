@@ -1,5 +1,5 @@
 function example()
-    ledger = GeneralLedger("NewCo")
+    ledger = GeneralLedger("NewCo","0000000")
     assets = DebitGroup(ledger,"Assets","1000000")
     liabilities = CreditGroup(ledger,"Liabilities","2000000")
     cash = DebitAccount(assets,"Cash","1010000")

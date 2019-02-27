@@ -4,23 +4,25 @@ struct CreditGroup{C} end
 struct DebitAccount{C} end
 struct CreditAccount{C} end
 
+struct Module
+    compute::Function
+end
+
 mutable struct Account{C<:Currency}
     parent::Union{Account,Nothing}
     name::String
-    code::Union{String,Nothing}
-    isdebit::Union{Bool,Nothing}
-    balance::Union{Position{C},Nothing}
-    subaccounts::Union{Vector{Account},Nothing}
+    code::String
+    isdebit::Bool
+    balance::Union{Position{C},Module}
+    subaccounts::Vector{Account}
     chart::Union{Dict{String,Account},Nothing}
 
     function Account{C}(parent,name,code,isdebit,balance,subaccounts,chart) where C<:Currency 
         a = new(parent,name,code,isdebit,balance,subaccounts,chart)
         if !isnothing(parent)
             push!(parent.subaccounts,a)
-            if isnothing(subaccounts)
-                add(a)
-            end
         end
+        add(a)
         return a
     end
 end
@@ -39,34 +41,23 @@ function add(a::Account)
 end
 
 function accounttype(a::Account{C}) where C
-    if isnothing(a.parent)
-        return GeneralLedger{C}()
-    elseif a.isdebit
-        if isnothing(a.subaccounts)
-            return DebitAccount{C}()
-        else
-            return DebitGroup{C}()
-        end
+    isnothing(a.parent) && return GeneralLedger{C}()
+    if a.isdebit
+        isempty(a.subaccounts) && return DebitAccount{C}()
+        return DebitGroup{C}()
     else
-        if isnothing(a.subaccounts)
-            return CreditAccount{C}()
-        else
-            return CreditGroup{C}()
-        end
+        isempty(a.subaccounts) && return CreditAccount{C}()
+        return CreditGroup{C}()
     end
 end
 
-DebitAccount(p,n,c,b::Position{C}=Position(Currencies.USD,0.)) where C = Account{C}(p,n,c,true,b,nothing,nothing)
-CreditAccount(p,n,c,b::Position{C}=Position(Currencies.USD,0.)) where C = Account{C}(p,n,c,false,b,nothing,nothing)
-DebitGroup(p,n,c,::C=Currencies.USD) where C = Account{C}(p,n,c,true,nothing,Vector{Account}(),nothing)
-CreditGroup(p,n,c,::C=Currencies.USD) where C = Account{C}(p,n,c,false,nothing,Vector{Account}(),nothing)
-GeneralLedger(n,::C=Currencies.USD) where C = Account{C}(nothing,n,nothing,true,nothing,Vector{Account}(),Dict{String,Account}())
+balance(a::Account{C}) where C = balance(a,a.balance)::Position{C}
+balance(a::Account{C},b::Position{C}) where C = b
+balance(a::Account{C},m::Module) where C = a.balance.compute(a)
 
-currency(a::Account{C}) where C = C()
-
-balance(a::Account) = balance(a,accounttype(a))
 balance(a::Account{C}, ::Union{DebitAccount{C},CreditAccount{C}}) where C = a.balance
-function balance(a::Account{C}, ::Any) where C
+
+function _aggregate(a::Account{C}) where C
     b = Position{C}(0.)
     for account in a.subaccounts
         if isequal(a.isdebit,account.isdebit)
@@ -77,3 +68,12 @@ function balance(a::Account{C}, ::Any) where C
     end
     return b
 end
+Aggregate = Module(_aggregate)
+
+DebitAccount(p,n,c,b::Union{Position{C},Module}=Position(Currencies.USD,0.)) where C = Account{C}(p,n,c,true,b,Vector{Account}(),nothing)
+CreditAccount(p,n,c,b::Union{Position{C},Module}=Position(Currencies.USD,0.)) where C = Account{C}(p,n,c,false,b,Vector{Account}(),nothing)
+DebitGroup(p,n,c,::C=Currencies.USD) where C = Account{C}(p,n,c,true,Aggregate,Vector{Account}(),nothing)
+CreditGroup(p,n,c,::C=Currencies.USD) where C = Account{C}(p,n,c,false,Aggregate,Vector{Account}(),nothing)
+GeneralLedger(n,c,::C=Currencies.USD) where C = Account{C}(nothing,n,c,true,Aggregate,Vector{Account}(),Dict{String,Account}())
+
+currency(a::Account{C}) where C = C()

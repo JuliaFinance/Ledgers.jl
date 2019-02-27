@@ -1,7 +1,8 @@
 module GeneralLedgers
 
-using Reexport, AbstractTrees
-@reexport using Positions
+using Reexport
+@reexport using Positions, AbstractTrees
+export Account, GeneralLedger, DebitGroup, CreditGroup, DebitAccount, CreditAccount, Entry
 
 include("account.jl")
 include("entries.jl")
