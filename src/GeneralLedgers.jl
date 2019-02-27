@@ -2,8 +2,9 @@ module GeneralLedgers
 
 using Reexport
 @reexport using Positions, AbstractTrees
-export Account, GeneralLedger, DebitGroup, CreditGroup, DebitAccount, CreditAccount, Entry
+export Account, Entry
 
+const AT = AbstractTrees
 const FI = FinancialInstruments
 
 include("account.jl")
