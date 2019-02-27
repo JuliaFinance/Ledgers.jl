@@ -5,6 +5,6 @@ function example()
     cash = DebitAccount(assets,"Cash","1010000")
     payable = CreditAccount(liabilities,"Accounts Payable","2010000")
 
-    entry = Entry(cash,payable,Position(Currencies.USD,10.))
+    entry = Entry(cash,payable,Position(FI.USD,10.))
     return ledger, assets, liabilities, cash, payable, entry
 end

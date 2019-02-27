@@ -1,4 +1,4 @@
-struct Entry{C<:Currency}
+struct Entry{C<:Cash}
     debit::Account{C}
     credit::Account{C}
     amount::Position{C}
