@@ -11,9 +11,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[Currencies]]
 deps = ["DelimitedFiles"]
-git-tree-sha1 = "98344a4fcd55f9cd99cc966da276be2fd44e8b06"
+git-tree-sha1 = "033fd6e1903935bad63a6f1ed0593d2ebcdea012"
 uuid = "0fd90b74-7c1f-579e-9252-02cd883047b9"
-version = "0.1.0"
+version = "0.12.0"
 
 [[Dates]]
 deps = ["Printf"]
@@ -27,27 +27,15 @@ uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
-[[Entities]]
-deps = ["Jurisdictions", "Reexport"]
-git-tree-sha1 = "45c65c262564c695bc87085016626b6cc0649b07"
-uuid = "d68c5960-3734-11e9-0c07-a30dcbe4dda4"
-version = "0.1.0"
-
 [[FinancialInstruments]]
-deps = ["Dates", "Entities", "Reexport"]
-git-tree-sha1 = "2a09c7d97463415e9d12e72a2601d9b4a278c488"
+deps = ["Currencies", "Dates", "Reexport"]
+git-tree-sha1 = "25281c87b0125935723edb3f1da32ca37e200f37"
 uuid = "fc5b99d0-3725-11e9-2623-bf561589b708"
-version = "0.1.0"
+version = "0.1.1"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
-
-[[Jurisdictions]]
-deps = ["Markets", "Reexport"]
-git-tree-sha1 = "6ce1c2adbfe0421ae11af14049a26deda860346d"
-uuid = "044ac1b0-3745-11e9-192d-5d2cecb87306"
-version = "0.1.0"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -55,12 +43,6 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 [[Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
-
-[[Markets]]
-deps = ["Currencies", "Reexport"]
-git-tree-sha1 = "7738553ae8be6bb2e9b20078b8d0ac60c2a01c79"
-uuid = "b44f5480-3750-11e9-03b7-d5e34f572a03"
-version = "0.1.0"
 
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
@@ -80,9 +62,9 @@ deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
-git-tree-sha1 = "7b1d07f411bc8ddb7977ec7f377b97b158514fe0"
+git-tree-sha1 = "6b9a637e33dfb9ceff7f01938408c344fa926ce3"
 repo-rev = "master"
-repo-url = "https://github.com/EricForgy/Reexport.jl"
+repo-url = "https://github.com/simonster/Reexport.jl.git"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "0.2.0+"
 
