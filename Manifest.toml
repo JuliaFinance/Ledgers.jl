@@ -49,9 +49,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[Positions]]
 deps = ["FinancialInstruments", "Reexport"]
-git-tree-sha1 = "60903a5c32659d913f2eae3c3b7fe83aa116da90"
+git-tree-sha1 = "2e880619c4115f36c1e72ba45f41369c5c527b58"
 uuid = "81d999f0-3725-11e9-2196-fd457307c398"
-version = "0.1.0"
+version = "0.1.1"
 
 [[Printf]]
 deps = ["Unicode"]
