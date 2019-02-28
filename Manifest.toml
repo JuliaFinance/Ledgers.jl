@@ -29,7 +29,7 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[FinancialInstruments]]
 deps = ["Currencies", "Dates", "Reexport"]
-git-tree-sha1 = "25281c87b0125935723edb3f1da32ca37e200f37"
+git-tree-sha1 = "43e49ec20792d65d1b9a42a060acd67412a3ea84"
 uuid = "fc5b99d0-3725-11e9-2623-bf561589b708"
 version = "0.1.1"
 

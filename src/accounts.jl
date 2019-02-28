@@ -29,7 +29,7 @@ mutable struct Account{C<:Cash}
 end
 Account(parent::Account{C},name,code,isdebit,::C=FI.USD) where C<:Cash = Account{C}(parent,name,code,isdebit)
 Account(name::String,code,::C=FI.USD) where C<:Cash = Account{C}(name,code)
-const chartofaccounts = Dict{String,Account}()
+const chartofaccounts = Dict{String,Account{<:Cash}}()
 
 function get_ledger(a::Account{C}) where C
     while !isequal(a,a.parent)
@@ -53,3 +53,20 @@ end
 
 currency(a::Account{C}) where C = C()
 iscontra(a::Account{C}) where C = !isequal(a,a.parent) && !isequal(a.parent,get_ledger(a)) && !isequal(a.parent.isdebit,a.isdebit)
+
+function loadchart(ledgername,ledgercode,csvfile)
+    data, headers = readdlm(csvfile,',',String,header=true)
+    nrow,ncol = size(data)
+
+    ledger = Account(ledgername,ledgercode)
+    for i = 1:nrow
+        row = data[i,:]
+        code = row[1]
+        name = row[2]
+        parent = chartofaccounts[row[3]]
+        isdebit = isequal(row[4],"Debit")
+        Account(parent,name,code,isdebit)
+    end
+    AT.print_tree(chartofaccounts)
+    return ledger
+end
