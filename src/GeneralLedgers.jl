@@ -2,13 +2,14 @@ module GeneralLedgers
 
 using Reexport, DelimitedFiles
 @reexport using Positions, AbstractTrees
-export Account, Entry
+export Account, Entry, Transaction
 
 const AT = AbstractTrees
 const FI = FinancialInstruments
 
 include("accounts.jl")
 include("entries.jl")
+include("transactions.jl")
 include("display.jl")
 include("example.jl")
 
