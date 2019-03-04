@@ -44,7 +44,7 @@ parent(a::Account) = a._parent
 name(a::Account) = a._name
 isdebit(a::Account) = a._isdebit
 function balance(a::Account{C,F,A}) where {C,F,A}
-    isempty(a._subaccounts) && return a._balance::Position{C,A}
+    isempty(a._subaccounts) && return convert(Position{C,A},a._balance)
     b = zero(Position{C,A})
     for account in a._subaccounts
         if isequal(a._isdebit,account._isdebit)
