@@ -5,9 +5,8 @@ version = "0.1.0"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-Positions = "81d999f0-3725-11e9-2196-fd457307c398"
+Markets = "b44f5480-3750-11e9-03b7-d5e34f572a03"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [extras]

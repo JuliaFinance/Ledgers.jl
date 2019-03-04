@@ -10,7 +10,7 @@ version = "0.2.1"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[Currencies]]
-deps = ["DelimitedFiles"]
+deps = ["DelimitedFiles", "Test"]
 git-tree-sha1 = "033fd6e1903935bad63a6f1ed0593d2ebcdea012"
 uuid = "0fd90b74-7c1f-579e-9252-02cd883047b9"
 version = "0.12.0"
@@ -33,6 +33,12 @@ git-tree-sha1 = "43e49ec20792d65d1b9a42a060acd67412a3ea84"
 uuid = "fc5b99d0-3725-11e9-2623-bf561589b708"
 version = "0.1.1"
 
+[[FixedPointDecimals]]
+deps = ["Printf", "Test"]
+git-tree-sha1 = "b17a731934600b835150b7882238e7f06f8be368"
+uuid = "fb4d412d-6eee-574d-9565-ede6634db7b0"
+version = "0.3.0"
+
 [[InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -44,11 +50,23 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
+[[Markets]]
+deps = ["Dates", "Observables", "Positions", "Reexport"]
+path = "C:\\Users\\Eric\\.julia\\dev\\Markets"
+uuid = "b44f5480-3750-11e9-03b7-d5e34f572a03"
+version = "0.1.1+"
+
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[Observables]]
+deps = ["Test"]
+git-tree-sha1 = "dc02cec22747d1d10d9f70d8a1c03432b5bfbcd0"
+uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
+version = "0.2.3"
+
 [[Positions]]
-deps = ["FinancialInstruments", "Reexport"]
+deps = ["FinancialInstruments", "FixedPointDecimals", "Reexport"]
 git-tree-sha1 = "2e880619c4115f36c1e72ba45f41369c5c527b58"
 uuid = "81d999f0-3725-11e9-2196-fd457307c398"
 version = "0.1.1"
