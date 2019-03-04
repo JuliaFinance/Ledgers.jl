@@ -1,52 +1,51 @@
-mutable struct Account{C<:Cash,A<:Real}
-    _parent::Account{C,A}
+mutable struct Account{F<:FinancialInstrument,A<:Real}
+    _parent::Account
     _name::String
     _code::String
     _isdebit::Bool
-    _balance::Position{C,A}
-    _subaccounts::Vector{Account{C,A}}
+    _balance::Position
+    _subaccounts::Vector{Account}
 
-    function Account{C,A}(parent::Account{C,A},name,code,isdebit,balance=Position(C(),0.)) where C where A
-        a = new(parent,name,code,isdebit,balance,Vector{Account{C,A}}())
+    function Account{F,A}(parent::Account,name,code,isdebit,balance::Position{F,A}=Position(FI.USD,0.)) where F where A
+        a = new(parent,name,code,isdebit,balance,Vector{Account}())
         push!(parent._subaccounts,a)
         return a
     end
 
-    function Account{C,A}(name::String,code,balance=Position(C(),0.)) where C where A
+    function Account{F,A}(name::String,code,balance::Position{F,A}=Position(FI.USD,0.)) where F where A
         a = new()
         a._parent = a
         a._name = name
         a._code = code
         a._isdebit = true
         a._balance = balance
-        a._subaccounts = Vector{Account{C,A}}()
+        a._subaccounts = Vector{Account}()
         return a
     end
 end
-Account(parent::Account{C,A},name,code,isdebit,balance::Position{C,A}=Position(FI.USD,0.)) where C where A = Account{C,A}(parent,name,code,isdebit,balance)
-Account(name::String,code,balance::Position{C,A}=Position(FI.USD,0.)) where C where A = Account{C,A}(name,code,balance)
-const chartofaccounts = Dict{String,Account{<:Cash}}()
+Account(parent::Account,name,code,isdebit,balance::Position{F,A}=Position(FI.USD,0.)) where F where A = Account{F,A}(parent,name,code,isdebit,balance)
+Account(name::String,code,balance::Position{F,A}=Position(FI.USD,0.)) where F where A = Account{F,A}(name,code,balance)
+const chartofaccounts = Dict{String,Account}()
 
-function get_ledger(a::Account{C,A}) where C where A
+function get_ledger(a::Account)
     while !isequal(a,a._parent)
         a = a._parent
     end
     return a
 end
 
-function add(a::Account{C,A}) where C where A
+function add(a::Account)
         haskey(chartofaccounts,a._code) && error("Account with code $(a._code) already exists.")
         chartofaccounts[a._code] = a
         return a
 end
 
-currency(a::Account{C,A}) where C where A = C
-parent(a::Account{C,A}) where C where A = a._parent
-name(a::Account{C,A}) where C where A = a._name
-isdebit(a::Account{C,A}) where C where A = a._isdebit
-function balance(a::Account{C,A}) where C where A
+parent(a::Account) = a._parent
+name(a::Account) = a._name
+isdebit(a::Account) = a._isdebit
+function balance(a::Account{F,A}) where F where A
     isempty(a._subaccounts) && return a._balance
-    b = Position{C,A}(0.)
+    b = Position{F,A}(0.)
     for account in a._subaccounts
         if isequal(a._isdebit,account._isdebit)
             b += balance(account)
@@ -56,9 +55,9 @@ function balance(a::Account{C,A}) where C where A
     end
     return b
 end
-subaccounts(a::Account{C,A}) where C where A = a._subaccounts
+subaccounts(a::Account) = a._subaccounts
 
-iscontra(a::Account{C,A}) where C where A = !isequal(a,a._parent) && !isequal(a._parent,get_ledger(a)) && !isequal(a._parent._isdebit,a._isdebit)
+iscontra(a::Account) = !isequal(a,a._parent) && !isequal(a._parent,get_ledger(a)) && !isequal(a._parent._isdebit,a._isdebit)
 
 function loadchart(ledgername,ledgercode,csvfile)
     data, headers = readdlm(csvfile,',',String,header=true)
@@ -76,8 +75,8 @@ function loadchart(ledgername,ledgercode,csvfile)
     return ledger
 end
 
-function trim(a::Account{C,A},newparent::Account{C,A}=Account(a._parent._name,a._parent._code)) where C where A
-    newaccount = isequal(a,a._parent) ? newparent : Account{C,A}(newparent,a._name,a._code,a._isdebit,a._balance)
+function trim(a::Account,newparent::Account=Account(a._parent._name,a._parent._code))
+    newaccount = isequal(a,a._parent) ? newparent : Account(newparent,a._name,a._code,a._isdebit,a._balance)
     for subaccount in a._subaccounts
         balance(subaccount).amount > 0. && trim(subaccount,newaccount)
     end
