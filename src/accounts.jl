@@ -1,4 +1,4 @@
-mutable struct Account{F<:FinancialInstrument,A<:Real}
+mutable struct Account
     _parent::Account
     _name::String
     _code::String
@@ -6,13 +6,13 @@ mutable struct Account{F<:FinancialInstrument,A<:Real}
     _balance::Position
     _subaccounts::Vector{Account}
 
-    function Account{F,A}(parent::Account,name,code,isdebit,balance::Position{F,A}=Position(FI.USD,0.)) where F where A
+    function Account(parent::Account,name,code,isdebit,balance::Position=Position(FI.USD,0.))
         a = new(parent,name,code,isdebit,balance,Vector{Account}())
         push!(parent._subaccounts,a)
         return a
     end
 
-    function Account{F,A}(name::String,code,balance::Position{F,A}=Position(FI.USD,0.)) where F where A
+    function Account(name::String,code,balance::Position=Position(FI.USD,0.))
         a = new()
         a._parent = a
         a._name = name
@@ -23,8 +23,6 @@ mutable struct Account{F<:FinancialInstrument,A<:Real}
         return a
     end
 end
-Account(parent::Account,name,code,isdebit,balance::Position{F,A}=Position(FI.USD,0.)) where F where A = Account{F,A}(parent,name,code,isdebit,balance)
-Account(name::String,code,balance::Position{F,A}=Position(FI.USD,0.)) where F where A = Account{F,A}(name,code,balance)
 const chartofaccounts = Dict{String,Account}()
 
 function get_ledger(a::Account)
@@ -43,9 +41,9 @@ end
 parent(a::Account) = a._parent
 name(a::Account) = a._name
 isdebit(a::Account) = a._isdebit
-function balance(a::Account{F,A}) where F where A
+function balance(a::Account)
     isempty(a._subaccounts) && return a._balance
-    b = Position{F,A}(0.)
+    b = zero(typeof(a._balance))
     for account in a._subaccounts
         if isequal(a._isdebit,account._isdebit)
             b += balance(account)
