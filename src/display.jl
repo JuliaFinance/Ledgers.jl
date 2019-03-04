@@ -4,7 +4,7 @@ AT.children(a::Account) = isempty(a._subaccounts) ? Vector{Account}() : a._subac
 function AT.printnode(io::IO,a::Account)
     isequal(a,a._parent) ? 
     print(io,a._name) : isempty(a._subaccounts) ? 
-    print(io,"$(a._code) $(a._name): ",balance(a)) : print(io,"$(a._code) $(a._name)")
+    print(io,"$(a._code) $(a._name): ",a._balance) : print(io,"$(a._code) $(a._name)")
 end
 Base.show(io::IO,a::Account) = isempty(a._subaccounts) ? AT.printnode(io,a) : print_tree(io,a)
 Base.show(io::IO,::MIME"text/plain",a::Account) = isempty(a._subaccounts) ? AT.printnode(io,a) : print_tree(io,a)

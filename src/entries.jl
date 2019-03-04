@@ -2,7 +2,6 @@ struct Entry
     _debit::Account
     _credit::Account
 end
-# const entries = Dict{String,Entry}()
 
 function debit!(a::Account,c::Position)
     !isempty(a._subaccounts) && error("Can only debit accounts with no subaccounts.")

@@ -1,29 +1,31 @@
-mutable struct Account
-    _parent::Account
+mutable struct Account{C<:Cash,F<:FinancialInstrument,A<:Real}
+    _parent::Account{C,<:FinancialInstrument}
     _name::String
     _code::String
     _isdebit::Bool
-    _balance::Position
-    _subaccounts::Vector{Account}
+    _balance::Position{F,A}
+    _subaccounts::Vector{Account{C,<:FinancialInstrument}}
 
-    function Account(parent::Account,name,code,isdebit,balance::Position=Position(FI.USD,0.))
-        a = new(parent,name,code,isdebit,balance,Vector{Account}())
+    function Account{C,F,A}(parent::Account{C,<:FinancialInstrument},name,code,isdebit,balance::Position{F,A}=Position(FI.USD,0.)) where {C,F,A}
+        a = new(parent,name,code,isdebit,balance,Vector{Account{C,<:FinancialInstrument}}())
         push!(parent._subaccounts,a)
         return a
     end
 
-    function Account(name::String,code,balance::Position=Position(FI.USD,0.))
+    function Account{F,F,A}(name::String,code,balance::Position{F,A}=Position(FI.USD,0.)) where {F,A}
         a = new()
         a._parent = a
         a._name = name
         a._code = code
         a._isdebit = true
         a._balance = balance
-        a._subaccounts = Vector{Account}()
+        a._subaccounts = Vector{Account{F,<:FinancialInstrument}}()
         return a
     end
 end
-const chartofaccounts = Dict{String,Account}()
+Account(parent::Account{C},name,code,isdebit,balance::Position{F,A}=Position(FI.USD,0.)) where {C,F,A} = Account{C,F,A}(parent,name,code,isdebit,balance)
+Account(name::String,code,balance::Position{F,A}=Position(FI.USD,0.)) where {F,A} = Account{F,F,A}(name,code,balance)
+const chartofaccounts = Dict{String,Account{<:Cash}}()
 
 function get_ledger(a::Account)
     while !isequal(a,a._parent)
@@ -41,9 +43,9 @@ end
 parent(a::Account) = a._parent
 name(a::Account) = a._name
 isdebit(a::Account) = a._isdebit
-function balance(a::Account)
-    isempty(a._subaccounts) && return a._balance
-    b = zero(typeof(a._balance))
+function balance(a::Account{C,F,A}) where {C,F,A}
+    isempty(a._subaccounts) && return a._balance::Position{C,A}
+    b = zero(Position{C,A})
     for account in a._subaccounts
         if isequal(a._isdebit,account._isdebit)
             b += balance(account)
@@ -51,7 +53,7 @@ function balance(a::Account)
             b -= balance(account)
         end
     end
-    return b
+    return b::Position{C,A}
 end
 subaccounts(a::Account) = a._subaccounts
 
