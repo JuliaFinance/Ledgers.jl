@@ -1,6 +1,6 @@
 name = "GeneralLedgers"
 uuid = "adab416e-2b84-11e9-2fd1-b5546e90182a"
-authors = ["Eric Forgy <Eric.Forgy@coherentasia.com>"]
+authors = ["Eric Forgy <Eric.Forgy@cavalre.com>"]
 version = "0.1.0"
 
 [deps]
