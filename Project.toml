@@ -7,7 +7,6 @@ version = "0.1.0"
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Markets = "b44f5480-3750-11e9-03b7-d5e34f572a03"
-Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
