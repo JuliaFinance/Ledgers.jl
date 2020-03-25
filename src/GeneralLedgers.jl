@@ -6,7 +6,7 @@ export Currencies, Currency
 export Countries, Country
 export FinancialInstruments, FinancialInstrument, Cash
 export Positions, Position
-export Markets, FX
+export Markets, FX, AbstractTrees, DelimitedFiles
 export Account, Entry, Transaction
 
 const AT = AbstractTrees
