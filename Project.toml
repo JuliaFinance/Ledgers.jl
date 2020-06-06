@@ -1,12 +1,13 @@
-name = "GeneralLedgers"
+name = "Ledgers"
 uuid = "adab416e-2b84-11e9-2fd1-b5546e90182a"
 authors = ["Eric Forgy <Eric.Forgy@cavalre.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+Assets = "821ac057-2368-47e2-a1d8-2c0798f0e233"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-Markets = "b44f5480-3750-11e9-03b7-d5e34f572a03"
+Instruments = "2a4f3d17-849a-48a1-809e-d780c70a95a0"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
