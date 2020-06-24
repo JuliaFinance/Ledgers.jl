@@ -81,9 +81,7 @@ function Ledger(accounts::Vector{Account{AT,B,Id}}) where {AT<:AccountType,B<:Po
     )
 end
 
-Base.getindex(ledger::Ledger, ix::Integer) = ledger.accounts[ix]
-Base.getindex(ledger::Ledger, range::UnitRange{I}) where {I<:Integer} = ledger.accounts[range]
-Base.getindex(ledger::Ledger, array::AbstractArray{I,1}) where {I<:Integer} = ledger.accounts[array]
+Base.getindex(ledger::Ledger, ix) = ledger.accounts[ix]
 
 Base.getindex(ledger::Ledger, id::Id) where {Id<:AccountId} = ledger.accounts[ledger.indexes[id]]
 Base.getindex(ledger::Ledger, array::AbstractArray{Id,1}) where {Id<:AccountId} = ledger.accounts[broadcast(id -> ledger.indexes[id], array)]
