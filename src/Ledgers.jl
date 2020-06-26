@@ -39,35 +39,10 @@ end
 Base.show(io::IO,e::Entry{D,C}) where {D <: Account,C <: Account} = print(io, "Entry:\n", "  Debit: $(e.debit)\n", "  Credit: $(e.credit)")
 Base.show(io::IO,::MIME"text/plain",e::Entry{D,C}) where {D <: Account,C <: Account} = print(io, "Entry:\n", "  Debit: $(e.debit)\n", "  Credit: $(e.credit)")
 
-function post!(entry::Entry{D,C}, amount::Position) where {D<:Account,C<:Account}
+function post!(entry::Entry{D,C}, amount::Position) where {D <: Account,C <: Account}
     debit!(entry.debit, amount)
     credit!(entry.credit, amount)
     entry
-end
-
-struct Ledger{B <: Position,Id <: AccountId}
-    indexes::Dict{Id,Int}
-    accounts::StructArray{Account{B,Id}}
-end
-function Ledger(accounts::Vector{Account{B,Id}}) where {B <: Position,Id <: AccountId}
-    indexes = Dict{Id,Int}()
-    for (index, account) in enumerate(accounts)
-        indexes[id(account)] = index
-    end
-    Ledger{B,Id}(
-        indexes,
-        StructArray(accounts)
-    )
-end
-
-Base.getindex(ledger::Ledger, ix) = ledger.accounts[ix]
-
-Base.getindex(ledger::Ledger, id::Id) where {Id <: AccountId} = ledger.accounts[ledger.indexes[id]]
-Base.getindex(ledger::Ledger, array::AbstractArray{Id,1}) where {Id <: AccountId} = ledger.accounts[broadcast(id->ledger.indexes[id], array)]
-
-function add_account!(ledger::Ledger, account::Account)
-    push!(ledger.accounts, account)
-    ledger.indexes[id(account)] = length(ledger.accounts)
 end
 
 abstract type AccountType end
@@ -102,7 +77,7 @@ balance(info::AccountInfo{Credit}) =
     isempty(subaccounts(info)) ? -balance(account(info)) :
     -balance(account(info)) - sum(map(info->balance(account(info)), subaccounts(info)))
 
-function post!(entry::Entry{D,C}, amount::Position) where {D<:AccountInfo,C<:AccountInfo}
+function post!(entry::Entry{D,C}, amount::Position) where {D <: AccountInfo,C <: AccountInfo}
     debit!(entry.debit.account, amount)
     credit!(entry.credit.account, amount)
     entry
@@ -122,6 +97,31 @@ Base.show(io::IO,::MIME"text/plain",e::Entry{D,C}) where {D <: AccountInfo,C <: 
     "  Debit: $(name(e.debit)) ($(id(e.debit))): $(balance(e.debit))\n",
     "  Credit: $(name(e.credit)) ($(id(e.credit))): $(balance(e.credit))\n")
 
+struct Ledger{B <: Position,Id <: AccountId}
+    indexes::Dict{Id,Int}
+    accounts::StructArray{Account{B,Id}}
+end
+function Ledger(accounts::Vector{Account{B,Id}}) where {B <: Position,Id <: AccountId}
+    indexes = Dict{Id,Int}()
+    for (index, account) in enumerate(accounts)
+        indexes[id(account)] = index
+    end
+    Ledger{B,Id}(
+        indexes,
+        StructArray(accounts)
+    )
+end
+
+Base.getindex(ledger::Ledger, ix) = ledger.accounts[ix]
+
+Base.getindex(ledger::Ledger, id::Id) where {Id <: AccountId} = ledger.accounts[ledger.indexes[id]]
+Base.getindex(ledger::Ledger, array::AbstractArray{Id,1}) where {Id <: AccountId} = ledger.accounts[broadcast(id->ledger.indexes[id], array)]
+
+function add_account!(ledger::Ledger, account::Account)
+    push!(ledger.accounts, account)
+    ledger.indexes[id(account)] = length(ledger.accounts)
+end
+
 function example()
     group = AccountInfo(Credit, Account(AccountId("0000000"), USD(0)), "Account Group")
     assets = AccountInfo(Debit, Account(AccountId("1000000"), USD(0)), "Assets", group)
@@ -133,86 +133,6 @@ function example()
     return group, assets, liabilities, cash, payable, entry
 end
 
-
-# function account_type(account::Account)
-
-# end
-
-# Base.show(io::IO, account::AccountInfo) = print(io, balance(account))
-# Base.show(io::IO, account::Account, ::IsCredit) = print(io, -balance(account))
-
-
-
-# struct AccountGroupId{S}
-#     id::S
-# end
-# Base.show(io::IO, id::Id) where {Id<:AccountGroupId} = print(io, id.id)
-
-# struct AccountGroup{AT<:AccountType,GroupId<:AccountGroupId}
-#     id::GroupId
-#     name::String
-#     parent::Union{Nothing,AccountGroup}
-#     subaccounts::Vector{Union{AccountGroup,Account}}
-
-#     function AccountGroup(::Type{AT},id::S,name,parent=nothing) where {AT<:AccountType,S}
-#         ag = new{AT,AccountGroupId{S}}(AccountGroupId{S}(id),name,parent,Vector{AccountGroup}())
-#         isnothing(parent) || push!(parent.subaccounts,ag)
-#         return ag
-#     end
-# end
-
-# function example()
-#     group = AccountGroup(Credit,"0000000","Account Group")
-#     assets = AccountGroup(Debit,"1000000","Assets",group)
-#     liabilities = AccountGroup(Credit,"2000000","Liabilities",group)
-#     cash = AccountGroup(Debit,"1010000","Cash",assets)
-#     payable = AccountGroup(Credit,"2010000","Accounts Payable",liabilities)
-
-#     # entry = Entry(cash,payable)
-#     return group, assets, liabilities, cash, payable#, entry
-# end
-
-# AccountGroup(subaccounts) = AccountGroup(AccountGroupId(uuid4()),nothing,subaccounts)
-
-# balance(a::AccountGroup{AT}) where {AT<:AccountType}= sum(balance.(a.subaccounts, AT))
-
-
-
-# struct BalanceSheet{P<:Position}
-#     asset::Ledger{Debit,P}
-#     liability::Ledger{Credit,P}
-#     revenue::Ledger{Credit,P}
-#     expense::Ledger{Debit,P}
-#     equity::Ledger{Credit,P}
-# end
-
-# mutable struct AccountGroup{C<:Cash,I<:Instrument,B<:Real}
-#     parent::AccountGroup{C,<:Instrument}
-#     name::String
-#     code::String
-#     isdebit::Bool
-#     balance::Position{I,B}
-#     subaccounts::Vector{AccountGroup{C,<:Instrument}}
-
-#     function AccountGroup{C,I,A}(parent::AccountGroup{C,<:Instrument},name,code,isdebit,balance::Position{I,A}=Position(USD,0.)) where {C,I,A}
-#         a = new(parent,name,code,isdebit,balance,Vector{AccountGroup{C,<:Instrument}}())
-#         push!(parent.subaccounts,a)
-#         return a
-#     end
-
-#     function AccountGroup{I,I,A}(name::String,code,balance::Position{I,A}=Position(USD,0.)) where {I,A}
-#         a = new()
-#         a.parent = a
-#         a.name = name
-#         a.code = code
-#         a.isdebit = true
-#         a.balance = balance
-#         a.subaccounts = Vector{AccountGroup{I,<:Instrument}}()
-#         return a
-#     end
-# end
-# AccountGroup(parent::AccountGroup{C},name,code,isdebit,balance::Position{I,A}=Position(USD,0.)) where {C,I,A} = AccountGroup{C,I,A}(parent,name,code,isdebit,balance)
-# AccountGroup(name::String,code,balance::Position{I,A}=Position(USD,0.)) where {I,A} = AccountGroup{I,I,A}(name,code,balance)
 # const chartofaccounts = Dict{String,AccountGroup{<:Cash}}()
 
 # function getledger(a::AccountGroup)
@@ -227,23 +147,6 @@ end
 #         chartofaccounts[a.code] = a
 #         return a
 # end
-
-# parent(a::AccountGroup) = a.parent
-# name(a::AccountGroup) = a.name
-# isdebit(a::AccountGroup) = a.isdebit
-# function balance(a::AccountGroup{C,I,A}) where {C,I,A}
-#     isempty(a.subaccounts) && return FX.convert(Position{C,A},a.balance)
-#     b = zero(Position{C,A})
-#     for account in a.subaccounts
-#         if isequal(a.isdebit,account.isdebit)
-#             b += balance(account)
-#         else
-#             b -= balance(account)
-#         end
-#     end
-#     return b::Position{C,A}
-# end
-# subaccounts(a::AccountGroup) = a.subaccounts
 
 # iscontra(a::AccountGroup) = !isequal(a,a.parent) && !isequal(a.parent,getledger(a)) && !isequal(a.parent.isdebit,a.isdebit)
 
@@ -270,43 +173,5 @@ end
 #     end
 #     return newaccount
 # end
-
-# const AT = AbstractTrees
-# AT.children(a::AccountGroup) = isempty(a.subaccounts) ? Vector{AccountGroup}() : a.subaccounts
-# AT.printnode(io::IO,a::AccountGroup) = print(io,"$(a.name) ($(a.id))")
-# Base.show(io::IO,a::AccountGroup) = isempty(a.subaccounts) ? AT.printnode(io,a) : print_tree(io,a)
-# Base.show(io::IO,::MIME"text/plain",a::AccountGroup) = isempty(a.subaccounts) ? AT.printnode(io,a) : print_tree(io,a)
-
-# AT.children(c::Dict{String,AccountGroup}) = [p for p in c]
-# # AT.printnode(io::IO,c::Dict{String,AccountGroup}) = print(io,"Chart of Accounts:")
-# Base.show(io::IO,c::Dict{String,AccountGroup}) = print_tree(io,c)
-# Base.show(io::IO,::MIME"text/plain",c::Dict{String,AccountGroup}) = print_tree(io,c)
-
-# AT.children(p::Pair{String,AccountGroup}) = Vector{AccountGroup}()
-# AT.printnode(io::IO,p::Pair{String,AccountGroup}) = print(io,"$(p[1]): $(p[2].name)")
-# Base.show(io::IO,p::Pair{String,AccountGroup}) = print(io,"$(p[1]): $(p[2].name)")
-# Base.show(io::IO,::MIME"text/plain",p::Pair{String,AccountGroup}) = print(io,"$(p[1]): $(p[2].name)")
-
-# AT.children(e::Entry) = [e.debit,e.credit]
-# AT.printnode(io::IO,c::Entry) = print(io,"Entry:")
-# Base.show(io::IO,e::Entry) = print_tree(io,e)
-# Base.show(io::IO,::MIME"text/plain",e::Entry) = print_tree(io,e)
-
-# AT.children(t::Dict{String,Entry}) = [p for p in t]
-# AT.printnode(io::IO,t::Dict{String,Entry}) = print(io,"Transaction:")
-# Base.show(io::IO,t::Dict{String,Entry}) = print_tree(io,t)
-# Base.show(io::IO,::MIME"text/plain",t::Dict{String,Entry}) = print_tree(io,t)
-
-# AT.children(p::Pair{String,Entry}) = [p[2].debit,p[2].credit]
-# AT.printnode(io::IO,p::Pair{String,Entry}) = print(io,"Entry:")
-# Base.show(io::IO,p::Pair{String,Entry}) = print(io,p[2])
-# Base.show(io::IO,::MIME"text/plain",p::Pair{String,Entry}) = print(io,p[2])
-
-# AT.children(t::Transaction) = AT.children(t.entries)
-# AT.printnode(t::Transaction) = AT.printnode(t.entries)
-# Base.show(io::IO,t::Transaction) = print_tree(io,t.entries)
-# Base.show(io::IO,::MIME"text/plain",t::Transaction) = print_tree(io,t.entries)
-
-# AT.printnode(io::IO,c::Position{Cash{C},A})  where C where A = print(io,c.amount," ",C())
 
 end
