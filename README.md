@@ -10,9 +10,9 @@
 
 [license-img]:  http://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat
 [license-url]:  LICENSE.md
-[travis-url]:   https://travis-ci.org/JuliaFinance/Ledgers.jl
-[travis-s-img]: https://travis-ci.org/JuliaFinance/Ledgers.jl.svg
-[travis-m-img]: https://travis-ci.org/JuliaFinance/Ledgers.jl.svg?branch=master
+[travis-url]:   https://travis-ci.com/JuliaFinance/Ledgers.jl
+[travis-s-img]: https://travis-ci.com/JuliaFinance/Ledgers.jl.svg
+[travis-m-img]: https://travis-ci.com/JuliaFinance/Ledgers.jl.svg?branch=master
 
 [contrib]:    https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat
 
