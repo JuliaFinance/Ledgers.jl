@@ -1,5 +1,3 @@
-# Ledgers
-
 [julia-url]:    https://github.com/JuliaLang/Julia
 [julia-release]:https://img.shields.io/github/release/JuliaLang/julia.svg
 
@@ -14,3 +12,5 @@
 |:------------------:|:---------------------:|:---------------------:|
 | [![][julia-release]][julia-url] | [![][travis-s-img]][travis-url] | [![][codecov-img]][codecov-url]
 | Latest | [![][travis-m-img]][travis-url] | [![][codecov-img]][codecov-url]
+
+# Ledgers
