@@ -14,7 +14,8 @@ module Ledgers
 using UUIDs, StructArrays, AbstractTrees
 using Instruments
 import Instruments: instrument, symbol, amount, name, currency
-using Assets: USD
+using Assets
+@cash USD
 
 export Account, Ledger, Entry, AccountId, AccountCode, AccountInfo, AccountGroup
 export id, balance, credit!, debit!, post!, instrument, symbol, amount, code, name, currency
@@ -32,65 +33,60 @@ struct AccountCode
     value::String
 end
 
-abstract type AccountType{B <: Position} end
+abstract type AccountType{P<:Position} end
 
-mutable struct Account{B <: Position} <: AccountType{B}
+mutable struct Account{P<:Position} <: AccountType{P}
     id::AccountId
-    balance::B
+    balance::P
 end
 
 Account(balance::Position) = Account{typeof(balance)}(AccountId(), balance)
 
-abstract type AccountNode{B <: Position} <: AccountType{B} end
+abstract type AccountNode{P<:Position} <: AccountType{P} end
 
-struct AccountInfo{B <: Position} <: AccountNode{B}
-    account::Account{B}
+struct AccountInfo{P<:Position} <: AccountNode{P}
+    account::Account{P}
     code::AccountCode
     name::String
     isdebit::Bool
 
-    function AccountInfo{B}(account::Account{B}, code, name, isdebit=true, parent=nothing) where {B <: Position}
-        acc = new{B}(account, code, name, isdebit)
+    function AccountInfo{P}(account::Account{P}, code, name, isdebit=true, parent=nothing
+                            ) where {P<:Position}
+        #println("Create a new AccountInfo{$P}, id=$id, code=$code, name=$name")
+        acc = new{P}(account, code, name, isdebit)
         parent === nothing || push!(parent.subaccounts, acc)
         acc
     end
 end
 
-AccountInfo(account::Account{B}, code, name, isdebit=true, parent=nothing) where {B <: Position} =
-    AccountInfo{B}(account, code, name, isdebit, parent)
+AccountInfo(account::Account{P}, code, name, args...) where {P<:Position} =
+    AccountInfo{P}(account, code, name, args...)
 
-struct AccountGroup{B <: Position} <: AccountNode{B}
+mutable struct AccountGroup{P<:Position} <: AccountNode{P}
     id::AccountId
     code::AccountCode
     name::String
     isdebit::Bool
-    parent::Union{Nothing,AccountGroup{B}}
-    subaccounts::StructArray{AccountInfo{B}}
-    subgroups::StructArray{AccountGroup{B}}
 
-    function AccountGroup{B}(
-        id,
-        code,
-        name,
-        isdebit=true,
-        parent=nothing,
-        subaccounts=StructArray(Vector{AccountInfo{B}}()),
-        subgroups=StructArray(Vector{AccountGroup{B}}())) where {B <: Position}
-        acc = new{B}(id, code, name, isdebit, parent, subaccounts, subgroups)
+    parent::Union{Nothing,AccountGroup{P}}
+    subaccounts::Vector{AccountInfo{P}}
+    subgroups::Vector{AccountGroup{P}}
+
+    function AccountGroup{P}(id, code, name,
+                             isdebit=true,
+                             parent=nothing,
+                             subaccounts=Vector{AccountInfo{P}}(),
+                             subgroups=Vector{AccountGroup{P}}()
+                             ) where {P<:Position}
+        #println("Create a new AccountGroup{$P}, id=$id, code=$code, name=$name")
+        acc = new{P}(id, code, name, isdebit, parent, subaccounts, subgroups)
         parent === nothing || push!(parent.subgroups, acc)
         acc
     end
 end
 
-AccountGroup(
-    ::B,
-    code,
-    name,
-    isdebit=true,
-    parent=nothing, 
-    subaccounts=StructArray(Vector{AccountInfo{B}}()),
-    subgroups=StructArray(Vector{AccountGroup{B}}())) where {B <: Position} =
-    AccountGroup{B}(AccountId(), code, name, isdebit, parent, subaccounts, subgroups)
+AccountGroup(::P, code, name, args...) where {P<:Position} =
+    AccountGroup{P}(AccountId(), code, name, args...)
 
 # Identity function (to make code more generic)
 account(acc::AccountType) = acc
@@ -107,24 +103,27 @@ subgroups(group::AccountGroup) = group.subgroups
 id(acc::AccountType) = account(acc).id
 
 balance(acc) = account(acc).balance
-balance(group::AccountGroup) = isempty(subgroups(group)) ?
-    sum(balance.(subaccounts(group))) :
-    sum(balance.(subaccounts(group))) + sum(balance.(subgroups(group)))
 
-instrument(::AccountType{B}) where {B <: Position} = instrument(B)
+function balance(grp::AccountGroup{P}) where {P<:Position}
+    sa = subaccounts(grp)
+    sg = subgroups(grp)
+    (isempty(sa) ? zero(P) : sum(balance, sa)) + (isempty(sg) ? zero(P) : sum(balance, sg))
+end
 
-symbol(::AccountType{B}) where {B <: Position} = symbol(B)
+instrument(::AccountType{P}) where {P<:Position} = instrument(P)
 
-currency(::AccountType{B}) where {B <: Position} = currency(B)
+symbol(::AccountType{P}) where {P<:Position} = symbol(P)
+
+currency(::AccountType{P}) where {P<:Position} = currency(P)
 
 amount(acc::AccountType) = amount(balance(acc))
 
 debit!(acc::Account, amt::Position) = (acc.balance += amt)
 credit!(acc::Account, amt::Position) = (acc.balance -= amt)
 
-struct Entry{B <: Position}
-    debit::AccountInfo{B}
-    credit::AccountInfo{B}
+struct Entry{P<:Position}
+    debit::AccountInfo{P}
+    credit::AccountInfo{P}
 end
 
 function post!(entry::Entry, amt::Position)
@@ -133,11 +132,12 @@ function post!(entry::Entry, amt::Position)
     entry
 end
 
-struct Ledger{P <: Position}
+# SPJ: we should probably retain the id of the Ledger here
+struct Ledger{P<:Position}
     indexes::Dict{AccountId,Int}
     accounts::StructArray{Account{P}}
 
-    function Ledger(accounts::Vector{Account{P}}) where {P <: Position}
+    function Ledger(accounts::Vector{Account{P}}) where {P<:Position}
         indexes = Dict{AccountId,Int}()
         for (index, account) in enumerate(accounts)
             indexes[id(account)] = index
