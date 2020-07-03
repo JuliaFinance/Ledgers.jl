@@ -27,63 +27,71 @@ end
 
 AccountId() = AccountId(uuid4())
 
+macro id_str(id)
+    AccountId(id)
+end
+
 struct AccountCode
     value::String
 end
 
-abstract type AccountType{B <: Position} end
+macro code_str(code)
+    AccountCode(code)
+end
 
-mutable struct Account{B <: Position} <: AccountType{B}
+abstract type AccountType{P <: Position} end
+
+mutable struct Account{P <: Position} <: AccountType{P}
     id::AccountId
-    balance::B
+    balance::P
 end
 
 Account(balance::Position) = Account{typeof(balance)}(AccountId(), balance)
 
-abstract type AccountNode{B <: Position} <: AccountType{B} end
+abstract type AccountNode{P <: Position} <: AccountType{P} end
 
-struct AccountInfo{B <: Position} <: AccountNode{B}
-    account::Account{B}
+struct AccountInfo{P <: Position} <: AccountNode{P}
+    account::Account{P}
     code::AccountCode
     name::String
     isdebit::Bool
     iscontra::Bool
 end
 
-function AccountInfo(account::Account{B}, code, name, isdebit=true; parent=nothing) where {B <: Position}
+function AccountInfo(account::Account{P}, code, name, isdebit=true; parent=nothing) where {P <: Position}
     if parent === nothing
-        return AccountInfo{B}(account, code, name, isdebit, false)
+        return AccountInfo{P}(account, code, name, isdebit, false)
     else
-        acc = AccountInfo{B}(account, code, name, isdebit, parent.isdebit !== isdebit)
+        acc = AccountInfo{P}(account, code, name, isdebit, parent.isdebit !== isdebit)
         push!(parent.subaccounts, acc)
         return acc
     end
 end
 
-struct AccountGroup{B <: Position} <: AccountNode{B}
+struct AccountGroup{P <: Position} <: AccountNode{P}
     id::AccountId
     code::AccountCode
     name::String
     isdebit::Bool
     iscontra::Bool
-    subaccounts::StructArray{AccountInfo{B}}
-    subgroups::StructArray{AccountGroup{B}}
+    subaccounts::StructArray{AccountInfo{P}}
+    subgroups::StructArray{AccountGroup{P}}
 end
 
 function AccountGroup(
-        ::B,
+        ::P,
         code,
         name,
         isdebit=true;
         id=AccountId(),
-        subaccounts=StructArray(Vector{AccountInfo{B}}()),
-        subgroups=StructArray(Vector{AccountGroup{B}}()),
+        subaccounts=StructArray(Vector{AccountInfo{P}}()),
+        subgroups=StructArray(Vector{AccountGroup{P}}()),
         parent=nothing
-    ) where {B <: Position}
+    ) where {P <: Position}
     if parent === nothing
-        return AccountGroup{B}(id, code, name, isdebit, false, subaccounts, subgroups)
+        return AccountGroup{P}(id, code, name, isdebit, false, subaccounts, subgroups)
     else
-        acc = AccountGroup{B}(id, code, name, isdebit, parent.isdebit !== isdebit, subaccounts, subgroups)
+        acc = AccountGroup{P}(id, code, name, isdebit, parent.isdebit !== isdebit, subaccounts, subgroups)
         push!(parent.subgroups, acc)
         return acc
     end
@@ -91,21 +99,15 @@ end
 
 # Identity function (to make code more generic)
 account(acc::AccountType) = acc
+
 account(info::AccountInfo) = info.account
-
-code(acc::AccountNode) = acc.code
-name(acc::AccountNode) = acc.name
-isdebit(acc::AccountNode) = acc.isdebit
-iscontra(acc::AccountNode) = acc.iscontra
-
-subaccounts(group::AccountGroup) = group.subaccounts
-subgroups(group::AccountGroup) = group.subgroups
 
 id(acc::AccountType) = account(acc).id
 
 balance(acc) = account(acc).balance
-function balance(group::AccountGroup{B}) where {B <: Position}
-    btot = zero(B)
+
+function balance(group::AccountGroup{P}) where {P <: Position}
+    btot = zero(P)
     for acc in group.subaccounts.account
         btot += balance(acc)
     end
@@ -115,20 +117,33 @@ function balance(group::AccountGroup{B}) where {B <: Position}
     btot
 end
 
-instrument(::AccountType{B}) where {B <: Position} = instrument(B)
+code(acc::AccountNode) = acc.code
 
-symbol(::AccountType{B}) where {B <: Position} = symbol(B)
+name(acc::AccountNode) = acc.name
 
-currency(::AccountType{B}) where {B <: Position} = currency(B)
+isdebit(acc::AccountNode) = acc.isdebit
+
+iscontra(acc::AccountNode) = acc.iscontra
+
+subaccounts(group::AccountGroup) = group.subaccounts
+
+subgroups(group::AccountGroup) = group.subgroups
+
+instrument(::AccountType{P}) where {P <: Position} = instrument(P)
+
+symbol(::AccountType{P}) where {P <: Position} = symbol(P)
+
+currency(::AccountType{P}) where {P <: Position} = currency(P)
 
 amount(acc::AccountType) = amount(balance(acc))
 
 debit!(acc::Account, amt::Position) = (acc.balance += amt)
+
 credit!(acc::Account, amt::Position) = (acc.balance -= amt)
 
-struct Entry{B <: Position}
-    debit::AccountInfo{B}
-    credit::AccountInfo{B}
+struct Entry{P <: Position}
+    debit::AccountInfo{P}
+    credit::AccountInfo{P}
 end
 
 function post!(entry::Entry, amt::Position)
@@ -137,31 +152,60 @@ function post!(entry::Entry, amt::Position)
     entry
 end
 
-struct Ledger{P <: Position}
-    indexes::Dict{AccountId,Int}
-    accounts::StructArray{Account{P}}
+struct LedgerId <: Identifier
+    value::UUID
+end
 
-    function Ledger(accounts::Vector{Account{P}}) where {P <: Position}
-        indexes = Dict{AccountId,Int}()
-        for (index, account) in enumerate(accounts)
-            indexes[id(account)] = index
-        end
-        new{P}(indexes, StructArray(accounts))
+LedgerId() = LedgerId(uuid4())
+
+struct Ledger{P <: Position}
+    id::LedgerId
+    indexes::Dict{AccountId,Int}
+    codes::Dict{AccountCode,Int}
+    accounts::StructArray{Account{P}}
+end
+
+function Ledger(accounts::Vector{AccountInfo{P}}; id=LedgerId()) where {P <: Position}
+    indexes = Dict{AccountId,Int}()
+    codes = Dict{AccountCode,Int}()
+    for (index, account) in enumerate(accounts)
+        indexes[account.id] = index
+        codes[account.code] = index
     end
+    Ledger{P}(id, indexes, codes, StructArray(accounts))
+end
+
+function add_account!(ledger::Ledger, acc::AccountInfo)
+    push!(ledger.accounts, acc)
+    ledger.indexes[id(acc)] = length(ledger.accounts)
+    ledger.codes[code(acc)] = length(ledger.accounts)
 end
 
 Base.getindex(ledger::Ledger, ix) = ledger.accounts[ix]
+
 Base.getindex(ledger::Ledger, id::AccountId) =
     ledger.accounts[ledger.indexes[id]]
+
+Base.getindex(ledger::Ledger, code::AccountCode) =
+    ledger.accounts[ledger.codes[code]]
+
 Base.getindex(ledger::Ledger, array::AbstractVector{<:AccountId}) =
     ledger.accounts[broadcast(id->ledger.indexes[id], array)]
 
-function add_account!(ledger::Ledger, acc::Account)
-    push!(ledger.accounts, acc)
-    ledger.indexes[id(acc)] = length(ledger.accounts)
+Base.getindex(ledger::Ledger, array::AbstractVector{<:AccountCode}) =
+    ledger.accounts[broadcast(code->ledger.codes[code], array)]
+
+struct EntityId <: Identifier
+    value::UUID
 end
 
+EntityId() = EntityId(uuid4())
 
+struct Entity
+    id::EntityId
+    name::String
+    ledgers::Dict{P,Ledger{P}} where {P<:Position}
+end
 
 
 # const chartofaccounts = Dict{String,AccountGroup{<:Cash}}()
