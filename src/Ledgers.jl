@@ -15,7 +15,7 @@ using UUIDs, StructArrays, AbstractTrees
 using Instruments
 import Instruments: instrument, symbol, amount, name, currency
 
-export Account, Ledger, Entry, AccountId, AccountCode, AccountInfo, AccountGroup
+export Account, Ledger, Entry, Identifier, AccountId, AccountCode, AccountInfo, AccountGroup
 export id, balance, credit!, debit!, post!, instrument, currency, symbol, amount
 export code, name, isdebit, iscontra, subaccounts, subgroups
 
@@ -172,8 +172,10 @@ function Ledger(accounts::Vector{AccountInfo{P}}; id=LedgerId()) where {P <: Pos
         indexes[account.id] = index
         codes[account.code] = index
     end
-    Ledger{P}(id, indexes, codes, StructArray(accounts))
+    Ledger{P}(id, indexes, codes, StructArray(account.(accounts)))
 end
+
+Ledger(::Type{P}) where {P<:Position} = Ledger(Vector{AccountInfo{P}}())
 
 function add_account!(ledger::Ledger, acc::AccountInfo)
     push!(ledger.accounts, acc)
