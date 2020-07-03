@@ -14,11 +14,10 @@ module Ledgers
 using UUIDs, StructArrays, AbstractTrees
 using Instruments
 import Instruments: instrument, symbol, amount, name, currency
-using Assets: USD
 
 export Account, Ledger, Entry, AccountId, AccountCode, AccountInfo, AccountGroup
-export id, balance, credit!, debit!, post!, instrument, symbol, amount, code, name, currency
-export parent, subaccounts, subgroups
+export id, balance, credit!, debit!, post!, instrument, currency, symbol, amount
+export code, name, isdebit, iscontra, subaccounts, subgroups
 
 abstract type Identifier end
 
@@ -48,49 +47,47 @@ struct AccountInfo{B <: Position} <: AccountNode{B}
     code::AccountCode
     name::String
     isdebit::Bool
-
-    function AccountInfo{B}(account::Account{B}, code, name, isdebit=true, parent=nothing) where {B <: Position}
-        acc = new{B}(account, code, name, isdebit)
-        parent === nothing || push!(parent.subaccounts, acc)
-        acc
-    end
+    iscontra::Bool
 end
 
-AccountInfo(account::Account{B}, code, name, isdebit=true, parent=nothing) where {B <: Position} =
-    AccountInfo{B}(account, code, name, isdebit, parent)
+function AccountInfo(account::Account{B}, code, name, isdebit=true; parent=nothing) where {B <: Position}
+    if parent === nothing
+        return AccountInfo{B}(account, code, name, isdebit, false)
+    else
+        acc = AccountInfo{B}(account, code, name, isdebit, parent.isdebit !== isdebit)
+        push!(parent.subaccounts, acc)
+        return acc
+    end
+end
 
 struct AccountGroup{B <: Position} <: AccountNode{B}
     id::AccountId
     code::AccountCode
     name::String
     isdebit::Bool
-    parent::Union{Nothing,AccountGroup{B}}
+    iscontra::Bool
     subaccounts::StructArray{AccountInfo{B}}
     subgroups::StructArray{AccountGroup{B}}
-
-    function AccountGroup{B}(
-        id,
-        code,
-        name,
-        isdebit=true,
-        parent=nothing,
-        subaccounts=StructArray(Vector{AccountInfo{B}}()),
-        subgroups=StructArray(Vector{AccountGroup{B}}())) where {B <: Position}
-        acc = new{B}(id, code, name, isdebit, parent, subaccounts, subgroups)
-        parent === nothing || push!(parent.subgroups, acc)
-        acc
-    end
 end
 
-AccountGroup(
-    ::B,
-    code,
-    name,
-    isdebit=true,
-    parent=nothing, 
-    subaccounts=StructArray(Vector{AccountInfo{B}}()),
-    subgroups=StructArray(Vector{AccountGroup{B}}())) where {B <: Position} =
-    AccountGroup{B}(AccountId(), code, name, isdebit, parent, subaccounts, subgroups)
+function AccountGroup(
+        ::B,
+        code,
+        name,
+        isdebit=true;
+        id=AccountId(),
+        subaccounts=StructArray(Vector{AccountInfo{B}}()),
+        subgroups=StructArray(Vector{AccountGroup{B}}()),
+        parent=nothing
+    ) where {B <: Position}
+    if parent === nothing
+        return AccountGroup{B}(id, code, name, isdebit, false, subaccounts, subgroups)
+    else
+        acc = AccountGroup{B}(id, code, name, isdebit, parent.isdebit !== isdebit, subaccounts, subgroups)
+        push!(parent.subgroups, acc)
+        return acc
+    end
+end
 
 # Identity function (to make code more generic)
 account(acc::AccountType) = acc
@@ -99,17 +96,24 @@ account(info::AccountInfo) = info.account
 code(acc::AccountNode) = acc.code
 name(acc::AccountNode) = acc.name
 isdebit(acc::AccountNode) = acc.isdebit
+iscontra(acc::AccountNode) = acc.iscontra
 
-parent(group::AccountGroup) = group.parent
 subaccounts(group::AccountGroup) = group.subaccounts
 subgroups(group::AccountGroup) = group.subgroups
 
 id(acc::AccountType) = account(acc).id
 
 balance(acc) = account(acc).balance
-balance(group::AccountGroup) = isempty(subgroups(group)) ?
-    sum(balance.(subaccounts(group))) :
-    sum(balance.(subaccounts(group))) + sum(balance.(subgroups(group)))
+function balance(group::AccountGroup{B}) where {B <: Position}
+    btot = zero(B)
+    for acc in group.subaccounts.account
+        btot += balance(acc)
+    end
+    for grp in group.subgroups
+        btot += balance(grp)
+    end
+    btot
+end
 
 instrument(::AccountType{B}) where {B <: Position} = instrument(B)
 
@@ -157,16 +161,7 @@ function add_account!(ledger::Ledger, acc::Account)
     ledger.indexes[id(acc)] = length(ledger.accounts)
 end
 
-function example()
-    group = AccountGroup(USD(0), AccountCode("0000000"), "Account Group", false)
-    assets = AccountGroup(USD(0), AccountCode("1000000"), "Assets", true, group)
-    liabilities = AccountGroup(USD(0), AccountCode("2000000"), "Liabilities", false, group)
-    cash = AccountInfo(Account(USD(0)), AccountCode("1010000"), "Cash", true, assets)
-    payable = AccountInfo(Account(USD(0)), AccountCode("2010000"), "Accounts Payable", false, liabilities)
 
-    entry = Entry(cash, payable)
-    group, assets, liabilities, cash, payable, entry
-end
 
 
 # const chartofaccounts = Dict{String,AccountGroup{<:Cash}}()
@@ -220,7 +215,7 @@ Base.show(io::IO, acc::AccountNode) = print_tree(io, acc)
 
 Base.show(io::IO, entry::Entry) = print_tree(io, entry)
 
-AbstractTrees.children(acc::AccountGroup) = vcat(Vector(subgroups(acc)),Vector(subaccounts(acc)))
+AbstractTrees.children(acc::AccountGroup) = vcat(Vector(subgroups(acc)), Vector(subaccounts(acc)))
 
 AbstractTrees.printnode(io::IO, acc::AccountNode) = 
     print(io, "[$(code(acc))] $(name(acc)): $(isdebit(acc) ? balance(acc) : -balance(acc))")
@@ -228,23 +223,5 @@ AbstractTrees.printnode(io::IO, acc::AccountNode) =
 AbstractTrees.children(entry::Entry) = [entry.debit, entry.credit]
 
 AbstractTrees.printnode(io::IO, ::Entry) = print(io, "Entry:")
-
-# AbstractTrees.children(info::AccountInfo) =
-#     isempty(subaccounts(info)) ? Vector{AccountInfo}() : subaccounts(info)
-# AbstractTrees.printnode(io::IO,info::AccountInfo) =
-#     print(io, "$(name(info)) ($(id(info))): $(balance(info))")
-
-# Base.show(io::IO,info::AccountInfo) =
-#     isempty(subaccounts(info)) ? printnode(io, info) : print_tree(io, info)
-
-# Base.show(io::IO, e::Entry) =
-#     print(io, "Entry:\n", "  Debit: $(e.debit)\n", "  Credit: $(e.credit)")
-
-# function Base.show(io::IO, e::Entry)
-#     print(io,
-#           "Entry:\n",
-#           "  Debit: $(name(e.debit)) ($(id(e.debit))): $(balance(e.debit))\n",
-#           "  Credit: $(name(e.credit)) ($(id(e.credit))): $(balance(e.credit))\n")
-# end
 
 end # module Ledgers
