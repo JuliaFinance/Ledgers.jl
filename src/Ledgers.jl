@@ -12,8 +12,7 @@ Licensed under MIT License, see LICENSE.md
 module Ledgers
 
 using UUIDs, StructArrays, AbstractTrees
-using Instruments
-import Instruments: instrument, symbol, amount, name, currency
+using Assets, Instruments, Currencies
 
 export Account, Ledger, Entry, Identifier, AccountId, AccountCode, AccountInfo, AccountGroup
 export id, balance, credit!, debit!, post!, instrument, currency, symbol, amount
@@ -79,7 +78,7 @@ struct AccountGroup{P <: Position} <: AccountNode{P}
 end
 
 function AccountGroup(
-        ::P,
+        ::Type{P},
         code,
         name,
         isdebit=true;
@@ -131,11 +130,17 @@ subgroups(group::AccountGroup) = group.subgroups
 
 instrument(::AccountType{P}) where {P <: Position} = instrument(P)
 
-symbol(::AccountType{P}) where {P <: Position} = symbol(P)
+# import Instruments: symbol, currency, instrument, position, amount
 
-currency(::AccountType{P}) where {P <: Position} = currency(P)
+Instruments.symbol(::AccountType{P}) where {I,P <: Position{I}} = symbol(I)
 
-amount(acc::AccountType) = amount(balance(acc))
+Instruments.currency(::AccountType{P}) where {I,P <: Position{I}} = currency(I)
+
+Instruments.instrument(::AccountType{P}) where {I,P <: Position{I}} = instrument(I)
+
+Instruments.position(::AccountType{P}) where {I,P <: Position{I}} = position(I)
+
+Instruments.amount(acc::AccountType) = amount(balance(acc))
 
 debit!(acc::Account, amt::Position) = (acc.balance += amt)
 
