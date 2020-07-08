@@ -34,20 +34,24 @@ AccountNumber() = AccountNumber("")
 
 abstract type AccountType{P <: Position} end
 
+accounttype(::A) where {A<:AccountType} = A
+
+accounttype(::StructArray{A}) where {A<:AccountType} = A
+
 mutable struct LedgerAccount{P <: Position} <: AccountType{P}
     id::AccountId
     balance::P
 end
 
-function LedgerAccount(balance::P; ledger=nothing) where {P<:Position}
+function LedgerAccount(balance::P; ledger=nothing) where {P <: Position}
     ledger === nothing && return LedgerAccount{P}(AccountId(), balance)
     acc = LedgerAccount{P}(AccountId(), balance)
-    push!(ledger.accounts,acc)
+    push!(ledger.accounts, acc)
     acc
 end
 
-LedgerAccount(::Type{P}=Assets.USD; ledger=nothing) where {P<:Position} = 
-    LedgerAccount(P(0),ledger=ledger)
+LedgerAccount(::Type{P}=Assets.USD; ledger=nothing) where {P <: Position} =
+    LedgerAccount(P(0), ledger=ledger)
 
 ledgeraccount(acc::LedgerAccount) = acc
 
@@ -64,15 +68,17 @@ struct Account{P <: Position} <: AccountType{P}
 end
 
 function Account(::Type{P}, number::AccountNumber, name, isdebit=true; parent=nothing, ledger=nothing) where {P <: Position}
-    account = LedgerAccount(P,ledger=ledger)
+    account = LedgerAccount(P, ledger=ledger)
     parent === nothing && return Account{P}(account, number, name, isdebit, false)
     acc = Account{P}(account, number, name, isdebit, parent.isdebit !== isdebit)
-    push!(parent.accounts, acc)
+    add_account!(parent.accounts, acc)
     acc
 end
 
-Account(::Type{P}=Assets.USD, number::String="",name::String="Default Account";ledger=nothing) where {P<:Position} =
-    Account(P,AccountNumber(number),name,ledger=ledger)
+Account{P}(acc::Account{P}) where {P<:Position} = acc
+
+Account(::Type{P}=Assets.USD, number::String="",name::String="Default Account";ledger=nothing) where {P <: Position} =
+    Account(P, AccountNumber(number), name, ledger=ledger)
 
 ledgeraccount(acc::Account) = acc.account
 
@@ -92,7 +98,7 @@ function Ledger(accounts::Vector{Account{P}}; id=LedgerId()) where {P <: Positio
     Ledger{P}(id, indexes, StructArray(ledgeraccount.(accounts)))
 end
 
-Ledger(::Type{P}=Assets.USD) where {P<:Position} = Ledger(Vector{Account{P}}())
+Ledger(::Type{P}=Assets.USD) where {P <: Position} = Ledger(Vector{Account{P}}())
 
 function add_account!(ledger::Ledger, acc)
     push!(ledger.accounts, ledgeraccount(acc))
@@ -100,38 +106,40 @@ function add_account!(ledger::Ledger, acc)
     ledger
 end
 
-struct AccountGroup{P <: Position}
+struct AccountGroup{A <: AccountType}
     id::AccountId
     number::AccountNumber
     name::String
     isdebit::Bool
     iscontra::Bool
-    accounts::StructArray{Account{P}}
-    subgroups::StructArray{AccountGroup{P}}
+    accounts::StructArray{A}
+    subgroups::StructArray{AccountGroup{A}}
 end
 
 function AccountGroup(
-        ::Type{P},
+        ::Type{A},
         number,
         name,
         isdebit=true;
         id=AccountId(),
-        accounts=StructArray(Vector{Account{P}}()),
-        subgroups=StructArray(Vector{AccountGroup{P}}()),
+        accounts=StructArray(Vector{A}()),
+        subgroups=StructArray(Vector{AccountGroup{A}}()),
         parent=nothing
-    ) where {P <: Position}
+    ) where {A <: AccountType}
     if parent === nothing
-        return AccountGroup{P}(id, number, name, isdebit, false, accounts, subgroups)
+        return AccountGroup{A}(id, number, name, isdebit, false, accounts, subgroups)
     else
-        acc = AccountGroup{P}(id, number, name, isdebit, parent.isdebit !== isdebit, accounts, subgroups)
+        acc = AccountGroup{A}(id, number, name, isdebit, parent.isdebit !== isdebit, accounts, subgroups)
         push!(parent.subgroups, acc)
         return acc
     end
 end
 
-add_account!(grp::AccountGroup, acc::AccountType) = push!(grp.accounts, acc)
+add_account!(grp::AccountGroup{A}, acc::AccountType) where {A<:AccountType} = push!(grp.accounts, A(acc))
 
 add_account!(grp::AccountGroup, acc::AccountGroup) = push!(grp.subgroups, acc)
+
+add_account!(grp::StructArray{A}, acc::AccountType) where {A<:AccountType} = push!(grp,A(acc))
 
 struct Entry{P <: Position}
     debit::Account{P}
@@ -144,7 +152,7 @@ id(acc::AccountGroup) = acc.id
 
 balance(acc) = ledgeraccount(acc).balance
 
-function balance(group::AccountGroup{P}) where {P <: Position}
+function balance(group::AccountGroup{<:AccountType{P}}) where {P <: Position}
     btot = zero(P)
     for acc in group.accounts.account
         btot += balance(acc)
@@ -181,7 +189,7 @@ Base.getindex(ledger::Ledger, id::AccountId) =
     ledger.accounts[ledger.indexes[id]]
 
 Base.getindex(ledger::Ledger, array::AbstractVector{<:AccountId}) =
-    ledger.accounts[broadcast(id->ledger.indexes[id], array)]
+    ledger.accounts[broadcast(id -> ledger.indexes[id], array)]
 
 struct EntityId <: Identifier
     value::UUID
@@ -192,7 +200,7 @@ EntityId() = EntityId(uuid4())
 struct Entity
     id::EntityId
     name::String
-    ledgers::Dict{P,Ledger{P}} where {P<:Position}
+    ledgers::Dict{P,Ledger{P}} where {P <: Position}
 end
 
 
@@ -237,33 +245,35 @@ end
 #     return newaccount
 # end
 
+_print_account(io::IO, acc) = print(io,
+    isempty(acc.number.value) ? "" : "[$(acc.number)] ",
+    "$(acc.name): $(acc.isdebit ? balance(acc) : -balance(acc))"
+)
+
 Base.show(io::IO, id::Identifier) = print(io, id.value)
 
 Base.show(io::IO, number::AccountNumber) = print(io, number.value)
 
 Base.show(io::IO, acc::LedgerAccount) = print(io, "$(string(id(acc))): $(balance(acc))")
 
+Base.show(io::IO, acc::Account) = _print_account(io, acc)
+
 Base.show(io::IO, acc::AccountGroup) = print_tree(io, acc)
 
 Base.show(io::IO, entry::Entry) = print_tree(io, entry)
 
-Base.show(io::IO, ledger::Ledger) = print_tree(io,ledger)
+Base.show(io::IO, ledger::Ledger) = print_tree(io, ledger)
 
-Base.show(io::IO, a::Vector{<:AccountType}) = print_tree(io,a)
+Base.show(io::IO, a::Vector{<:AccountType}) = print_tree(io, a)
+
+AbstractTrees.printnode(io::IO, acc::Ledger{P}) where {P <: Position} =
+    print(io, "$(symbol(P)) Ledger: [$(acc.id)]")
 
 AbstractTrees.children(acc::Ledger) = Vector(acc.accounts)
 
-AbstractTrees.printnode(io::IO, acc::Ledger{P}) where {P<:Position} =
-    print(io, "$(symbol(P)) Ledger: [$(acc.id)]")
+AbstractTrees.printnode(io::IO, acc::AccountGroup) = _print_account(io, acc)
 
 AbstractTrees.children(acc::AccountGroup) = vcat(Vector(acc.subgroups), Vector(acc.accounts))
-
-function AbstractTrees.printnode(io::IO, acc::AccountGroup)
-    print(io,
-        isempty(acc.number.value) ? "" : "[$(acc.number)] ",
-        "$(acc.name): $(acc.isdebit ? balance(acc) : -balance(acc))"
-    )
-end
 
 AbstractTrees.printnode(io::IO, b::Vector{<:AccountType}) =
     isempty(b) ? print(io, "Accounts: None") : print(io, "Accounts:")
