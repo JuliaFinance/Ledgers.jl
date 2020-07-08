@@ -14,8 +14,8 @@ module Ledgers
 using UUIDs, StructArrays, AbstractTrees
 using Assets, Instruments, Currencies
 
-export LedgerAccount, Ledger, Entry
-export Identifier, AccountId, AccountNumber, Account, AccountGroup, account
+export Identifier, AccountId, AccountType, AccountNumber
+export LedgerAccount, Ledger, Entry, Account, AccountGroup, ledgeraccount, add_account!
 export id, balance, credit!, debit!, post!, instrument, currency, symbol, amount
 
 abstract type Identifier end
@@ -29,6 +29,8 @@ AccountId() = AccountId(uuid4())
 struct AccountNumber
     value::String
 end
+
+AccountNumber() = AccountNumber("")
 
 abstract type AccountType{P <: Position} end
 
@@ -44,15 +46,16 @@ function LedgerAccount(balance::P; ledger=nothing) where {P<:Position}
     acc
 end
 
-LedgerAccount(::Type{P}=Assets.USD; ledger=nothing) where {P<:Position} = LedgerAccount(P(0),ledger=ledger)
+LedgerAccount(::Type{P}=Assets.USD; ledger=nothing) where {P<:Position} = 
+    LedgerAccount(P(0),ledger=ledger)
+
+ledgeraccount(acc::LedgerAccount) = acc
 
 struct LedgerId <: Identifier
     value::UUID
 end
 
-abstract type AccountNode{P <: Position} <: AccountType{P} end
-
-struct Account{P <: Position} <: AccountNode{P}
+struct Account{P <: Position} <: AccountType{P}
     account::LedgerAccount{P}
     number::AccountNumber
     name::String
@@ -68,7 +71,10 @@ function Account(::Type{P}, number::AccountNumber, name, isdebit=true; parent=no
     acc
 end
 
-Account(::Type{P}=Assets.USD;ledger=nothing) where {P<:Position} = Account(P,AccountNumber("Account Number"),"Name",ledger=ledger)
+Account(::Type{P}=Assets.USD, number::String="",name::String="Default Account";ledger=nothing) where {P<:Position} =
+    Account(P,AccountNumber(number),name,ledger=ledger)
+
+ledgeraccount(acc::Account) = acc.account
 
 LedgerId() = LedgerId(uuid4())
 
@@ -83,12 +89,18 @@ function Ledger(accounts::Vector{Account{P}}; id=LedgerId()) where {P <: Positio
     for (index, account) in enumerate(accounts)
         indexes[account.id] = index
     end
-    Ledger{P}(id, indexes, StructArray(account.(accounts)))
+    Ledger{P}(id, indexes, StructArray(ledgeraccount.(accounts)))
 end
 
 Ledger(::Type{P}=Assets.USD) where {P<:Position} = Ledger(Vector{Account{P}}())
 
-struct AccountGroup{P <: Position} <: AccountNode{P}
+function add_account!(ledger::Ledger, acc)
+    push!(ledger.accounts, ledgeraccount(acc))
+    ledger.indexes[id(acc)] = length(ledger.accounts)
+    ledger
+end
+
+struct AccountGroup{P <: Position}
     id::AccountId
     number::AccountNumber
     name::String
@@ -117,19 +129,20 @@ function AccountGroup(
     end
 end
 
+add_account!(grp::AccountGroup, acc::AccountType) = push!(grp.accounts, acc)
+
+add_account!(grp::AccountGroup, acc::AccountGroup) = push!(grp.subgroups, acc)
+
 struct Entry{P <: Position}
     debit::Account{P}
     credit::Account{P}
 end
 
-# Identity function (to make more generic)
-account(acc::AccountType) = acc
+id(acc::AccountType) = ledgeraccount(acc).id
 
-account(info::Account) = info.account
+id(acc::AccountGroup) = acc.id
 
-id(acc::AccountType) = account(acc).id
-
-balance(acc) = account(acc).balance
+balance(acc) = ledgeraccount(acc).balance
 
 function balance(group::AccountGroup{P}) where {P <: Position}
     btot = zero(P)
@@ -146,9 +159,9 @@ Instruments.symbol(::AccountType{P}) where {I,P <: Position{I}} = symbol(I)
 
 Instruments.currency(::AccountType{P}) where {I,P <: Position{I}} = currency(I)
 
-Instruments.instrument(::AccountType{P}) where {I,P <: Position{I}} = instrument(I)
+Instruments.instrument(::AccountType{P}) where {I,P <: Position{I}} = I
 
-Instruments.position(::AccountType{P}) where {I,P <: Position{I}} = position(I)
+Instruments.position(::AccountType{P}) where {P <: Position} = P
 
 Instruments.amount(acc::AccountType) = amount(balance(acc))
 
@@ -157,14 +170,9 @@ debit!(acc::LedgerAccount, amt::Position) = (acc.balance += amt)
 credit!(acc::LedgerAccount, amt::Position) = (acc.balance -= amt)
 
 function post!(entry::Entry, amt::Position)
-    debit!(account(entry.debit), amt)
-    credit!(account(entry.credit), amt)
+    debit!(ledgeraccount(entry.debit), amt)
+    credit!(ledgeraccount(entry.credit), amt)
     entry
-end
-
-function add_account!(ledger::Ledger, acc::Account)
-    push!(ledger.accounts, acc)
-    ledger.indexes[id(acc)] = length(ledger.accounts)
 end
 
 Base.getindex(ledger::Ledger, ix) = ledger.accounts[ix]
@@ -235,11 +243,13 @@ Base.show(io::IO, number::AccountNumber) = print(io, number.value)
 
 Base.show(io::IO, acc::LedgerAccount) = print(io, "$(string(id(acc))): $(balance(acc))")
 
-Base.show(io::IO, acc::AccountNode) = print_tree(io, acc)
+Base.show(io::IO, acc::AccountGroup) = print_tree(io, acc)
 
 Base.show(io::IO, entry::Entry) = print_tree(io, entry)
 
 Base.show(io::IO, ledger::Ledger) = print_tree(io,ledger)
+
+Base.show(io::IO, a::Vector{<:AccountType}) = print_tree(io,a)
 
 AbstractTrees.children(acc::Ledger) = Vector(acc.accounts)
 
@@ -248,8 +258,17 @@ AbstractTrees.printnode(io::IO, acc::Ledger{P}) where {P<:Position} =
 
 AbstractTrees.children(acc::AccountGroup) = vcat(Vector(acc.subgroups), Vector(acc.accounts))
 
-AbstractTrees.printnode(io::IO, acc::AccountNode) = 
-    print(io, "[$(acc.number)] $(acc.name): $(acc.isdebit ? balance(acc) : -balance(acc))")
+function AbstractTrees.printnode(io::IO, acc::AccountGroup)
+    print(io,
+        isempty(acc.number.value) ? "" : "[$(acc.number)] ",
+        "$(acc.name): $(acc.isdebit ? balance(acc) : -balance(acc))"
+    )
+end
+
+AbstractTrees.printnode(io::IO, b::Vector{<:AccountType}) =
+    isempty(b) ? print(io, "Accounts: None") : print(io, "Accounts:")
+
+AbstractTrees.children(b::Vector{<:AccountType}) = b
 
 AbstractTrees.children(entry::Entry) = [entry.debit, entry.credit]
 
