@@ -3,11 +3,11 @@ import Test; using Test: @testset, @test
 using Assets: USD
 
 function example()
-    group = AccountGroup(USD, AccountNumber("0000000"), "Account Group", true)
-    assets = AccountGroup(USD, AccountNumber("1000000"), "Assets", true, parent=group)
-    liabilities = AccountGroup(USD, AccountNumber("2000000"), "Liabilities", false, parent=group)
-    cash = Account(USD, AccountNumber("1010000"), "Cash", true, parent=assets)
-    payable = Account(USD, AccountNumber("2010000"), "Accounts Payable", false, parent=liabilities)
+    group = AccountGroup(Account{USD}, "Account Group", "0000000", true)
+    assets = AccountGroup(Account{USD}, "Assets", "1000000", true, parent=group)
+    liabilities = AccountGroup(Account{USD}, "Liabilities", "2000000", false, parent=group)
+    cash = Account(USD, "Cash", "1010000", true, parent=assets)
+    payable = Account(USD, "Accounts Payable", "2010000", false, parent=liabilities)
 
     entry = Entry(cash, payable)
     group, assets, liabilities, cash, payable, entry
