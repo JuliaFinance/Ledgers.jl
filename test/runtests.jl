@@ -2,13 +2,20 @@ using Ledgers
 import Test; using Test: @testset, @test
 using Assets: USD
 
-function example()
-    group = AccountGroup(Account{USD}, "Account Group", "0000000", true)
-    assets = AccountGroup(Account{USD}, "Assets", "1000000", true, parent=group)
-    liabilities = AccountGroup(Account{USD}, "Liabilities", "2000000", false, parent=group)
-    cash = Account(USD, "Cash", "1010000", true, parent=assets)
-    payable = Account(USD, "Accounts Payable", "2010000", false, parent=liabilities)
-
+function example(withnumbers=true)
+    if withnumbers
+        group = AccountGroup(Account{USD}, name="Account Group", number="0000000")
+        assets = AccountGroup(Account{USD}, name="Assets", number="1000000", parent=group)
+        liabilities = AccountGroup(Account{USD}, name="Liabilities", number="2000000", parent=group, isdebit=false)
+        cash = Account(USD, name="Cash", number="1010000", parent=assets)
+        payable = Account(USD, name="Accounts Payable", number="2010000", parent=liabilities, isdebit=false)
+    else
+        group = AccountGroup(Account{USD}, name="Account Group")
+        assets = AccountGroup(Account{USD}, name="Assets", parent=group)
+        liabilities = AccountGroup(Account{USD}, name="Liabilities", parent=group, isdebit=false)
+        cash = Account(USD, name="Cash", parent=assets)
+        payable = Account(USD, name="Accounts Payable", parent=liabilities, isdebit=false)
+    end    
     entry = Entry(cash, payable)
     group, assets, liabilities, cash, payable, entry
 end
@@ -20,8 +27,6 @@ group, assets, liabilities, cash, payable, entry = example()
     @test id(assets) isa AccountId
     @test cash.number.value === "1010000"
     @test payable.name === "Accounts Payable"
-    @test assets.iscontra === false
-    @test liabilities.iscontra === true
     @test balance(group) === 0USD
     @test balance(assets) === 0USD
     @test balance(liabilities) === 0USD
