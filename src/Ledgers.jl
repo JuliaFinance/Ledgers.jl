@@ -150,6 +150,8 @@ function Account(
     acc
 end
 
+account(acc::AccountGroup) = acc
+
 function add_account(grp::AccountGroup{A}, acc::A) where {A <: AccountType}
     push!(grp.accounts, acc)
     grp.indexes[id(acc)] = length(grp.accounts)
@@ -161,9 +163,9 @@ function add_account(grp::AccountGroup{A}, acc::AccountGroup{A}) where {A <: Acc
     grp
 end
 
-struct Entry{A <: AccountType}
-    debit::A
-    credit::A
+struct Entry{A1 <: AccountType, A2 <: AccountType}
+    debit::A1
+    credit::A2
 end
 
 id(acc::AccountType) = ledgeraccount(acc).id
@@ -261,13 +263,9 @@ Base.getindex(grp::AccountGroup, array::AbstractVector{<:AccountId}) =
 
 function _print_account(io::IO, acc)
     iobuff = IOBuffer()
-    hasproperty(acc,:number) && isa(acc.number,AccountNumber) && !isempty(acc.number.value) && print(iobuff,"[$(acc.number)] ")
-    print(iobuff,acc.name,": ")
-    if hasproperty(acc,:isdebit) && !acc.isdebit
-        print(iobuff,-balance(acc))
-    else
-        print(iobuff,balance(acc))
-    end
+    isempty(account(acc).number.value) || print(iobuff,"[$(account(acc).number)] ")
+    print(iobuff,account(acc).name,": ")
+    account(acc).isdebit ? print(iobuff,balance(acc)) : print(iobuff,-balance(acc))
     print(io,String(take!(iobuff)))
 end
 
